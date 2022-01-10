@@ -1,0 +1,146 @@
+#!/bin/bash
+#LastPassCLI
+
+CLI=$(whereis lpass 2>/dev/null)
+
+if [[ $CLI =~ "/usr/bin/lpass" ]]; then
+    title
+    loggedin
+    searchMenu
+    menu
+else
+    install
+    title
+    login
+    searchMenu
+    menu
+fi
+
+while [[ $options != @(5|q|Q|quit|Quit) ]]; do
+    menu
+done
+exit
+
+install() {
+    sudo yum install flex bison -y
+    sudo yum groupinstall "Development Tools" -y
+    sudo yum makecache
+    sudo yum install make libxml2-devel openssl-devel libcurl-devel -y
+    git clone https://github.com/lastpass/lastpass-cli.git /tmp/lastpass-cli
+    cd /tmp/lastpass-cli
+    make
+    sudo make install
+    rm -rf /tmp/lastpass-cli
+    cd ~/.local/share/
+    mkdir lpass
+    cd ~/.local/share/lpass
+    echo "LPASS_AGENT_TIMEOUT=86400" >>env
+    echo "LPASS_AUTO_SYNC_TIME=900" >>env
+}
+
+title() {
+    echo "~~~~~~~~~~~~~~~~~~~"
+    echo "   LastPass CLI"
+    echo $'~~~~~~~~~~~~~~~~~~~\n'
+}
+
+login() {
+    read -p 'enter your email: ' email
+    lpass login $email
+}
+
+loggedin() {
+    user=$(lpass status)
+    if [[ $user =~ "Not logged in" ]]; then
+        login
+    else
+        echo $user
+    fi
+}
+
+menu() {
+    read -p $' 
+1) List all customers 
+2) Search by customer name 
+3) Enter command 
+4) Help 
+5) Quit 
+' options
+    case $options in
+        ls | list | List | "List all" | "list all" | "list all customers" | "List all customers" | 1)
+        lpass ls Shared-FTPpassword
+        ;;
+
+        search | Search | "search by" | "Search by" | "search by customer" | "Search by customer" | "Search by customer name" | "search by customer name" | 2)
+        searchMenu
+        ;;
+
+        e | E | ent | Ent | Enter | enter | "Enter command" | "enter command" | 3)
+        2>/dev/null
+        echo
+        read -p 'enter command:' command
+        $command
+        ;;
+
+        "-h" | "--h" | h | H | he | HE | hel | HEL | help | Help | HELP | 4)
+        help
+        ;;
+
+        Q | q | Qu | qu | Qui | qui | quit | Quit | 5)
+        clear -x
+        ;;
+    esac
+}
+
+searchMenu() {
+    echo
+    read -p 'Search customer name: ' name
+    case $name in
+
+        $name)
+        lpass show $name
+        sleep 2
+        ;;
+
+        "-h" | "--h" | h | H | he | HE | hel | HEL | help | Help | HELP)
+        help
+        ;;
+
+        Q | q | Quit | quit)
+        menu
+        ;;
+    esac
+}
+
+help() {
+    echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    echo "Welcome to the LastPass CLI"
+    echo $'~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+The LastPass CLI allows you to list all customer credentials and search for customer credentials by name. 
+Listing all customers can be done with numerous commands including 'ls, list, list all, 1'. 
+Searching for specific clients can be done with commands like 's, search, search by client, 2'. 
+If you have any questions or concerns please raise an IT Request ticket. 
+Below is a list of all LastPass CLI commands. 
+lpass login USERNAME 
+lpass logout  
+lpass passwd 
+lpass show {NAME|UNIQUEID} 
+lpass ls [GROUP] 
+lpass mv {UNIQUENAME|UNIQUEID} GROUP 
+lpass add {NAME|UNIQUEID} 
+lpass edit {NAME|UNIQUEID} 
+lpass generate {NAME|UNIQUEID} LENGTH 
+lpass duplicate {UNIQUENAME|UNIQUEID} 
+lpass rm {UNIQUENAME|UNIQUEID} 
+lpass status  
+lpass sync  
+lpass import [--sync=auto|now|no] [FILENAME] 
+lpass export [--sync=auto|now|no] [--color=auto|never|always] 
+lpass share userls SHARE 
+lpass share useradd [--read-only=[true|false]] [--hidden=[true|false]] [--admin=[true|false]] SHARE USERNAME 
+lpass share usermod [--read-only=[true|false]] [--hidden=[true|false]] [--admin=[true|false]] SHARE USERNAME 
+lpass share userdel SHARE USERNAME 
+lpass share create SHARE 
+lpass share limit SHARE USERNAME [sites]'
+    sleep 5
+}
